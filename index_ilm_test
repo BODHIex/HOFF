@@ -1,0 +1,31 @@
+from elasticsearch import Elasticsearch
+
+es_host = "NONE"  
+api_key = "NONE"
+# Блок подключения к хоффовскому ES
+es = Elasticsearch(
+    hosts=[es_host],
+    api_key=api_key,
+    verify_certs=False, 
+)
+
+# Определяем исключения
+excluded = ['.','elastalert_status','alert-']
+
+#1 - Вывод всех индексов
+#2 - Цикл : подходят ли полученные индексы к исключениям - Если подходит - не добавляется в список , Если не подходит идет след. проверка 
+#3 - Проверка объекта индекса на наличе ILM и запись в список "indices_without_ilm" Всем индексов без ilm
+try:
+
+    indices_without_ilm = [
+        index for index in es.indices.get_alias(index="*")  #1
+        if not any(index.startswith(prefix) for prefix in excluded) and  #2
+           not es.indices.get_settings(index=index)[index]['settings']['index'].get('lifecycle', {}).get('name') #3
+    ]
+
+    # Выводим индексы без ILM
+    print("Индексы без ILM:")
+    print("\n".join(indices_without_ilm))
+
+except Exception as e:
+    print(f"Произошла какая-то ошибка: {e}")
